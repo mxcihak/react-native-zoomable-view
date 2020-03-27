@@ -668,8 +668,8 @@ ReactNativeZoomableView.propTypes = {
   topToBottomBoundDistance: PropTypes.number,
   leftToRightBoundDistance: PropTypes.number,
   pinchToZoomCenter: PropTypes.shape({
-    x: number,
-    y: number,
+    x: PropTypes.number,
+    y: PropTypes.number,
   }),
 };
 
