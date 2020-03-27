@@ -229,7 +229,7 @@ class ReactNativeZoomableView extends Component {
    *
    * @returns {number}
    */
-  _getBoundOffsetValue(axis: 'x'|'y', offsetValue: number, containerSize: number, elementSize: number, zoomLevel: number) {
+  _getBoundOffsetValue(axis: 'x'|'y', offsetValue: number, containerSize: number, elementSize: number, zoomLevel: number, startBoundOffset: number, endBoundOffset: number) {
     const zoomLevelOffsetValue = (zoomLevel * offsetValue);
 
     const containerToScaledElementRatioSub = 1 - (containerSize / elementSize);
@@ -247,22 +247,24 @@ class ReactNativeZoomableView extends Component {
     // if both sides (before and after the element) have a positive distance
     // => (our zoomed content is smaller than the frame)
     // => so center it
-    if (containerSize > elementSize) {
-      return ((containerSize / 2) - (elementSize / 2) / zoomLevel);
+    if ((!startBoundOffset && !endBoundOffset)) {
+      if (containerSize > elementSize) {
+        return ((containerSize / 2) - (elementSize / 2) / zoomLevel);
+      }
     }
 
     // if everything above failed
     // => (one side is outside of the borders)
     // => find out which one it is and make sure it is 0
-    if (distanceToStart > 0) {
-      return startBorder;
+    if (distanceToStart > startBoundOffset/(zoomLevel*zoomLevel)) {
+      return startBorder + startBoundOffset/(zoomLevel*zoomLevel);
     }
 
     // if there is distance to the end border
     // => (it is outside of the box)
     // => adjust offset to make sure it stays within
-    if (distanceToEnd > 0) {
-      return endBorder;
+    if (distanceToEnd > endBoundOffset/(zoomLevel*zoomLevel)) {
+      return endBorder - endBoundOffset/(zoomLevel*zoomLevel);
     }
 
     // if everything above failed
@@ -316,10 +318,10 @@ class ReactNativeZoomableView extends Component {
     const currentElementHeight = originalHeight * changeObj.zoomLevel;
 
     // make sure that view doesn't go out of borders
-    const offsetXBound = this._getBoundOffsetValue('x', changeObj.offsetX, originalWidth, currentElementWidth, changeObj.zoomLevel);
+    const offsetXBound = this._getBoundOffsetValue('x', changeObj.offsetX, originalWidth, currentElementWidth, changeObj.zoomLevel,this.props.leftBoundOffset, this.props.rightBoundOffset);
     changeObj.offsetX = offsetXBound;
 
-    const offsetYBound = this._getBoundOffsetValue('y', changeObj.offsetY, originalHeight, currentElementHeight, changeObj.zoomLevel);
+    const offsetYBound = this._getBoundOffsetValue('y', changeObj.offsetY, originalHeight, currentElementHeight, changeObj.zoomLevel, this.props.topBoundOffset, this.props.bottomBoundOffset);
     changeObj.offsetY = offsetYBound;
 
     return changeObj;
@@ -406,8 +408,8 @@ class ReactNativeZoomableView extends Component {
 
     // only use the first position we get by pinching, or the screen will "wobble" during zoom action
     if (this.pinchZoomPosition === null) {
-      const pinchToZoomCenterX = Math.min(e.nativeEvent.touches[ 0 ].pageX, e.nativeEvent.touches[ 1 ].pageX) + ( dx / 2 );
-      const pinchToZoomCenterY = Math.min(e.nativeEvent.touches[ 0 ].pageY, e.nativeEvent.touches[ 1 ].pageY) + ( dy / 2 );
+      const pinchToZoomCenterX = this.props.pinchToZoomCenter ? this.props.pinchToZoomCenter.x : Math.min(e.nativeEvent.touches[ 0 ].pageX, e.nativeEvent.touches[ 1 ].pageX) + ( dx / 2 );
+      const pinchToZoomCenterY = this.props.pinchToZoomCenter ? this.props.pinchToZoomCenter.y : Math.min(e.nativeEvent.touches[ 0 ].pageY, e.nativeEvent.touches[ 1 ].pageY) + ( dy / 2 );
 
       this.pinchZoomPosition = this._getOffsetAdjustedPosition(pinchToZoomCenterX, pinchToZoomCenterY);
     }
@@ -658,7 +660,17 @@ ReactNativeZoomableView.propTypes = {
   onPanResponderEnd: PropTypes.func,
   onPanResponderMove: PropTypes.func,
   onLongPress: PropTypes.func,
-  longPressDuration: PropTypes.number
+  longPressDuration: PropTypes.number,
+  leftBoundOffset: PropTypes.number,
+  rightBoundOffset: PropTypes.number,
+  topBoundOffset: PropTypes.number,
+  bottomBoundOffset: PropTypes.number,
+  topToBottomBoundDistance: PropTypes.number,
+  leftToRightBoundDistance: PropTypes.number,
+  pinchToZoomCenter: PropTypes.shape({
+    x: number,
+    y: number,
+  }),
 };
 
 ReactNativeZoomableView.defaultProps = {
@@ -678,6 +690,13 @@ ReactNativeZoomableView.defaultProps = {
   onLongPress: null,
   longPressDuration: 700,
   captureEvent: false,
+  leftBoundOffset: 0,
+  rightBoundOffset: 0,
+  topBoundOffset: 0,
+  bottomBoundOffset: 0,
+  topToBottomBoundHeight: 0,
+  leftToRightBoundHeight: 0,
+  pinchToZoomCenter: null
 };
 
 const styles = StyleSheet.create({
